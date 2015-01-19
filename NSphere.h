@@ -44,6 +44,7 @@ public:
 	std::string pointsToPyDict();
 	unsigned    computeNearestPoint(float* p);
 	unsigned    computeNearestPoint(unsigned    i);
+	unsigned*   computeNearestPoints(unsigned i, unsigned n);
 	unsigned    computeFurthestPoint(float* p);
 	unsigned    computeFurthestPoint(unsigned    i);
 	unsigned    getNumPoints();

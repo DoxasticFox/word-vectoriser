@@ -6,7 +6,7 @@
 int main (int argc, char** argv) {
 	std::string dir;
 	if (argc < 2) {
-		std::cout << "Usage: " << argv[0] << " corpus_dir" << std::endl;
+		std::cout << "Usage: " << argv[0] << " corpusdirectory" << std::endl;
 		return 0;
 	} else {
 		dir = argv[1];
@@ -14,15 +14,15 @@ int main (int argc, char** argv) {
 
 	std::cout.precision(20);
 
-	int pageSize = 500;
+	int pageSize = 50;
 	auto c = Corpus(dir, pageSize);
 	//Corpus::WordList words = c.computeMostFrequentWords();
 	//c.writeDictionary(words);
 
-	Corpus::Lexicon lexicon = c.readDictionary(5000);
+	Corpus::Lexicon lexicon = c.readDictionary(10000);
 
-	unsigned contextSize = 10;
-	unsigned dimensionality = 3;
+	unsigned contextSize = 6;
+	unsigned dimensionality = 200;
 	auto l = Learner(lexicon, contextSize, dimensionality);
 
 	std::cout << std::endl;

@@ -44,8 +44,8 @@ float NSphere::computeSquaredDistance(float* p, float* q)
 float NSphere::computeEnergy()
 {
 	float energy = 0.0;
-	for (int i = 0; i < this->numPoints; i++) {
-		for (int j = i + 1; j < this->numPoints; j++) {
+	for (unsigned i = 0; i < this->numPoints; i++) {
+		for (unsigned j = i + 1; j < this->numPoints; j++) {
 			energy += this->computeEnergyInPoints(i, j);
 		}
 	}
@@ -55,7 +55,7 @@ float NSphere::computeEnergyDueToPoint(unsigned i)
 {
 	float energy = 0.0;
 	#pragma omp parallel for reduction(+:energy) schedule(static,256) num_threads(4)
-	for (int i_ = 0; i_ < this->numPoints; i_++) {
+	for (unsigned i_ = 0; i_ < this->numPoints; i_++) {
 		energy += this->computeEnergyInPoints(i, i_);
 	}
 	return energy;
@@ -142,7 +142,7 @@ std::string NSphere::pointToString(unsigned i)
 std::string NSphere::pointsToString()
 {
 	std::ostringstream ss;
-	for (int i = 0; i < this->numPoints; i++) {
+	for (unsigned i = 0; i < this->numPoints; i++) {
 		ss << this->pointToString(i) << std::endl;
 	}
 	return ss.str();
@@ -155,14 +155,16 @@ std::string NSphere::pointsToPyDict()
 
 	std::ostringstream ss;
 	ss << "{" << std::endl;
-	for (int i = 0; i < this->numPoints - 1; i++) {
+	for (unsigned i = 0; i < this->numPoints - 1; i++) {
 		ss << "\t";
 		ss << "\"" << std::to_string(i) << "\": ";
 		ss << this->pointToString(i);
 		ss << "," << std::endl;
 	}
+	ss << "\t";
 	ss << "\"" << std::to_string(this->numPoints - 1) << "\": ";
 	ss << this->pointToString(this->numPoints - 1);
+	ss << std::endl;
 	ss << "}";
 	return ss.str();
 }
@@ -174,18 +176,24 @@ unsigned NSphere::computeNearestPoint(float* p)
 {
 	float minDistance = std::numeric_limits<float>::max();
 	unsigned minPoint;
-	for (int i = 0; i < this->numPoints; i++) {
+	for (unsigned i = 0; i < this->numPoints; i++) {
 		if (p == this->points[i]) {
 			continue;
 		}
 		float thisDistance = this->computeDistance(p, this->points[i]);
-		if (thisDistance < minDistance) {
+		if (thisDistance <= minDistance) {
 			minDistance = thisDistance;
 			minPoint = i;
 		}
 	}
 	return minPoint;
 }
+/*
+unsigned* NSphere::computeNearestPoints(unsigned i, unsigned n)
+{
+	
+}
+*/
 unsigned NSphere::computeFurthestPoint(unsigned i)
 {
 	return this->computeFurthestPoint(this->points[i]);
@@ -194,7 +202,7 @@ unsigned NSphere::computeFurthestPoint(float* p)
 {
 	float maxDistance = std::numeric_limits<float>::min();
 	unsigned maxPoint;
-	for (int i = 0; i < this->numPoints; i++) {
+	for (unsigned i = 0; i < this->numPoints; i++) {
 		float thisDistance = this->computeDistance(p, this->points[i]);
 		if (thisDistance > maxDistance) {
 			maxDistance = thisDistance;
@@ -229,14 +237,14 @@ unsigned NSphere::addRandomUnitPoint()
 }
 void NSphere::addRandomUnitPoints(unsigned i)
 {
-	for (int i_ = 0; i_ < i; i_++) {
+	for (unsigned i_ = 0; i_ < i; i_++) {
 		this->addRandomUnitPoint();
 	}
 }
 void NSphere::computeNearestPoints(unsigned &i, unsigned &j)
 {
 	float minDistance = std::numeric_limits<float>::max();
-	for (int i_ = 0; i_ < this->numPoints; i_++) {
+	for (unsigned i_ = 0; i_ < this->numPoints; i_++) {
 		unsigned j_ = this->computeNearestPoint(i_);
 		float thisDistance = this->computeDistance(i_, j_);
 		if (thisDistance < minDistance) {
@@ -249,7 +257,7 @@ void NSphere::computeNearestPoints(unsigned &i, unsigned &j)
 void NSphere::computeFurthestPoints(unsigned &i, unsigned &j)
 {
 	float maxDistance = std::numeric_limits<float>::min();
-	for (int i_ = 0; i_ < this->numPoints; i_++) {
+	for (unsigned i_ = 0; i_ < this->numPoints; i_++) {
 		unsigned j_ = this->computeFurthestPoint(i_);
 		float thisDistance = this->computeDistance(i_, j_);
 		if (thisDistance > maxDistance) {
@@ -309,7 +317,7 @@ float NSphere::solveStep(float inc)
 {
 	float totalEnergyRise = 0.0;
 
-	for (int i = 0; i < this->numPoints; i++) {
+	for (unsigned i = 0; i < this->numPoints; i++) {
 		float energyRise = 0.0;
 		
 		float* savedPoint = this->getPointClone(i);

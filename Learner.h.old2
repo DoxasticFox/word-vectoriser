@@ -31,20 +31,21 @@ public:
 	void learnFromPage(const Learner::Page& page);
 	float computeDistance(Word w1, Word w2);
 	Word  computeNearestWord(Word w);
-	void  exportnSphere();
+	void exportnSphere();
 private:
 	int n;
+	const std::string NIL_WORD = "NIL";
+	const unsigned CONTEXT_SIZE;
+	const unsigned DIMENSIONALITY;
 	Learner::WordToWordIndexMap wordToWordIndexMap;
 	NSphere nSphere;
 
 	unsigned getWordIndex(const std::string& word);
 	Context getContext(const Sentence& sentence, unsigned wordIndex);
-	float   computeDistance(const Learner::Context& C1, const Learner::Context& C2);
-	float   computeDistance(const Learner::Contexts& C1s, const Learner::Contexts& C2s);
-	const std::string NIL_WORD = "NIL";
-	const unsigned CONTEXT_SIZE;
-	const unsigned DIMENSIONALITY;
-
+	void addContextToWordIndex(Learner::WordIndexToContextsMap& map, const Context& c, unsigned wIdx);
+	void decWeight(unsigned wIdx1, unsigned wIdx2, float dec=1.0);
+	float computeDecrement(Contexts& C1s, Contexts& C2s);
+	int getRunLength(Contexts& Cs, int i);
 };
 
 #endif

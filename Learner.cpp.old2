@@ -30,37 +30,42 @@ Learner::Learner(
 			, this->nSphere.getNumPoints());
 }
 
+void Learner::decWeight(unsigned wIdx1, unsigned wIdx2, float dec)
+{
+	if (dec <= std::numeric_limits<float>::epsilon()) {
+		return;
+	}
+	float weight = this->nSphere.getWeight(wIdx1, wIdx2);
+	weight *= pow(0.99, dec);
+	this->nSphere.setWeight(wIdx1, wIdx2, weight);
+}
 void Learner::learnFromPage(const Learner::Page& page)
 {
 	this->exportnSphere();
-	
-	/* Compute contexts of each word in the page */
-	std::cout << "Learner::learnFromPage: Computing contexts..." << std::endl;
+
 	auto wordIndexToContextsMap = Learner::WordIndexToContextsMap();
 
+	/* Compute contexts */
+	std::cout << "Learner::learnFromPage: Computing contexts..." << std::endl;
 	for (auto s = page.begin(); s != page.end(); ++s) {          // s = sentence
-		unsigned j = 0;
-		for (auto w = s->begin(); w != s->end(); ++w, ++j) {     // w = word
-			// figure out the `wordIndex` that belongs to the `word`
+		unsigned i = 0; // position of `w` in sentence
+		for (auto w = s->begin(); w != s->end(); ++w, ++i) {     // w = word
 			unsigned wordIndex = this->getWordIndex(*w);
-
-			// add an empty list of contexts for `wordIndex` if none exist yet
-			auto contexts = wordIndexToContextsMap.find(wordIndex);
-			if (contexts == wordIndexToContextsMap.end()) {
-				wordIndexToContextsMap.emplace(wordIndex, Learner::Contexts());
-			}
-
-			// add a `context` to one of the lists in `wordIndexToContextMap`
-			wordIndexToContextsMap[wordIndex].emplace_back(this->getContext(
-						  *s
-						, j ));
+			Learner::Context c = this->getContext(*s, i++);
+			this->addContextToWordIndex(wordIndexToContextsMap, c, wordIndex);
 		}
 	}
 
-	/* Compute the distances between the words based on the contexts and update
-	 * `this->nSphere`
-	 */
-	std::cout << "Learner::learnFromPage: Computing distances..." << std::endl;
+	/* Sort each list of contexts */
+	std::cout << "Learner::learnFromPage: Sorting contexts..." << std::endl;
+	for (auto i  = wordIndexToContextsMap.begin();
+			  i != wordIndexToContextsMap.end();
+			  i++) {
+		std::sort(i->second.begin(), i->second.end());
+	}
+
+	/* update the mutual charges between points */
+	std::cout << "Learner::learnFromPage: Updating charges..." << std::endl;
 	for (auto i  = wordIndexToContextsMap.begin();
 			  i != wordIndexToContextsMap.end();
 			  i++) {
@@ -69,12 +74,11 @@ void Learner::learnFromPage(const Learner::Page& page)
 			unsigned wordIndex2 = j->first;
 			Learner::Contexts contexts1 = i->second;
 			Learner::Contexts contexts2 = j->second;
-			float distance = this->computeDistance(contexts1, contexts1);
-
-			this->nSphere.setWeight(wordIndex1, wordIndex2, distance);
+			float dec = this->computeDecrement(contexts1, contexts2);
+			this->decWeight(wordIndex1, wordIndex2, dec);
 		}
 	}
-
+	
 	/* Improve the model */
 	std::cout << "Learner::learnFromPage: Solving n-sphere..." << std::endl;
 	//for (int i = 0; i < 20; i++)
@@ -82,52 +86,39 @@ void Learner::learnFromPage(const Learner::Page& page)
 	//std::cout << std::endl;
 }
 
-/*
- * Group average distance
- */
-float Learner::computeDistance(
-		  const Learner::Contexts& C1s
-		, const Learner::Contexts& C2s)
+float Learner::computeDecrement(Contexts& C1s, Contexts& C2s)
 {
-	if (C1s.size() == 0 || C2s.size() == 0) {
-		return this->nSphere.getDefaultWeight();
-	}
-
-	float distance = 0.0;
-	for (int i = 0; i < C1s.size(); i++) {
-		for (int j = 0; j < C2s.size(); j++) {
-			distance += this->computeDistance(C1s[i], C2s[j]);
+	int i = 0;
+	int j = 0;
+	float dec = 0.0;
+	while (i < C1s.size() && j < C2s.size()) {
+		if (C1s[i] < C2s[j]) {
+			i++;
+		} else if (C1s[i] > C2s[j]) {
+			j++;
+		} else {
+			int runLengthC1s = this->getRunLength(C1s, i);
+			int runLengthC2s = this->getRunLength(C2s, j);
+			dec += sqrt(runLengthC1s * runLengthC2s);
+			i += runLengthC1s;
+			j += runLengthC2s;
 		}
 	}
-	return distance / (C1s.size() * C2s.size());
+	return dec;
 }
 
-float Learner::computeDistance(
-		  const Learner::Context& C1
-		, const Learner::Context& C2)
+int Learner::getRunLength(Contexts& Cs, int i)
 {
-	float distance = 0.0;
-	int skipped = 0;
-	for (int i = 0; i < this->CONTEXT_SIZE; i++) {
-		unsigned nilWordIndex = this->getWordIndex(NIL_WORD);
-		if (C1[i] == nilWordIndex || C2[i] == nilWordIndex) {
-			skipped++;
-			continue;
+	int result = 1;
+	while (i + result < Cs.size()) {
+		if (Cs[i] == Cs[i + result]) {
+			result++;
+		} else {
+			break;
 		}
-		distance += this->nSphere.computeSquaredDistance(C1[i], C2[i]);
 	}
-
-	/* Finish up */
-	if (this->CONTEXT_SIZE - skipped == 0) {   // Only to avoid division by zero
-		return this->nSphere.getDefaultWeight();
-	}
-	if (distance >= std::numeric_limits<float>::epsilon()) {//Skipping nil words
-		return this->nSphere.getDefaultWeight();            //might cause
-	}                                                       //distance == 0.0
-	distance /= this->CONTEXT_SIZE - skipped;
-	return sqrt(distance);
+	return result;
 }
-
 float Learner::computeDistance(Word w1, Word w2)
 {
 	if (w1 == NIL_WORD) {
@@ -175,6 +166,17 @@ Learner::Context Learner::getContext(
 	return context;
 }
 
+void Learner::addContextToWordIndex(
+		  Learner::WordIndexToContextsMap& map
+		, const Learner::Context& c
+		, unsigned wIdx)
+{
+	if (map.find(wIdx) == map.end()) {
+		map.emplace(wIdx, Learner::Contexts());
+	}
+	map[wIdx].emplace_back(c);
+}
+
 unsigned Learner::getWordIndex(const std::string& word)
 {
 	if (this->wordToWordIndexMap.find(word) == this->wordToWordIndexMap.end()) {
@@ -186,8 +188,11 @@ unsigned Learner::getWordIndex(const std::string& word)
 
 Learner::Word Learner::computeNearestWord(Word w)
 {
-	if (w == this->NIL_WORD) {
-		return this->NIL_WORD;
+	if (w == NIL_WORD) {
+		return NIL_WORD;
+	}
+	if (this->wordToWordIndexMap.find(w) == this->wordToWordIndexMap.end()) {
+		return NIL_WORD;
 	}
 
 	unsigned wordIndex = this->nSphere.computeNearestPoint(
@@ -203,7 +208,7 @@ Learner::Word Learner::computeNearestWord(Word w)
 		}
 	}
 
-	/* shouldn't ever happen */
+	/* shouldn't happen */
 	return "";
 }
 

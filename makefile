@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-O3 -ffast-math -std=c++11 -fopenmp
+CFLAGS=-O3 -Wall -ffast-math -std=c++11 -fopenmp
 LDFLAGS=-lm -ffast-math -std=c++11 -fopenmp
 SOURCES= \
 Main.cpp \

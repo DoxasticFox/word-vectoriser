@@ -22,7 +22,7 @@ def visualise(points, filename):
 
     ax.scatter(sequence_containing_x_vals,
                     sequence_containing_y_vals,
-                    sequence_containing_z_vals, s=1)
+                    sequence_containing_z_vals, s=1, alpha=0.5)
 
     pylab.savefig('/tmp/plots/' + filename + '.png')
 
